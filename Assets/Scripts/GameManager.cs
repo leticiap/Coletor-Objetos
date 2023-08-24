@@ -13,6 +13,21 @@ public class GameManager : MonoBehaviourPunCallbacks
     [Tooltip("The prefab to use for representing the player")]
     public GameObject playerPrefab;
 
+    [Tooltip("The prefab to use for representing the regular item.")]
+    public GameObject itemPrefab;
+
+    [Tooltip("The prefab to use for representing the special item.")]
+    public GameObject specialItemPrefab;
+
+    [SerializeField]
+    private const int itemValue = 10;
+    [SerializeField]
+    private const int specialItemValue = 30;
+    [SerializeField]
+    private const float specialItemChanceToDrop = 0.2f;
+
+    private static int score = 0;
+
     #region Monobehavior Callbacks
     private void Start()
     {
@@ -20,12 +35,23 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             Debug.LogFormat("We are Instantiating LocalPlayer from {0}", SceneManagerHelper.ActiveSceneName);
             // we're in a room. spawn a character for the local player. it gets synced by using PhotonNetwork.Instantiate
-            PhotonNetwork.Instantiate(this.playerPrefab.name, new Vector3(0f, 5f, 0f), Quaternion.identity, 0);
+            PhotonNetwork.Instantiate(playerPrefab.name, new Vector3(UnityEngine.Random.Range(-1.5f, 1.5f), 0.4f, UnityEngine.Random.Range(-1.5f, 1.5f)), Quaternion.identity, 0);
         }
         else
         {
             Debug.LogFormat("Ignoring scene load for {0}", SceneManagerHelper.ActiveSceneName);
         }
+
+        if (itemPrefab == null)
+            Debug.LogError("No prefab found to instantiate");
+
+        else
+            StartCoroutine(spawnObjects());
+    }
+
+    private void Update()
+    {
+        Debug.Log(score);
     }
     #endregion
 
@@ -88,5 +114,21 @@ public class GameManager : MonoBehaviourPunCallbacks
         PhotonNetwork.LeaveRoom();
     }
 
+    IEnumerator spawnObjects()
+    {
+        Vector3 randomPos = new Vector3 (UnityEngine.Random.Range(-1.5f, 1.5f), 3, UnityEngine.Random.Range(-1.5f, 1.5f));
+        float specialItemChance = UnityEngine.Random.Range(0f, 1f);
+        Instantiate(specialItemChance < specialItemChanceToDrop ? specialItemPrefab : itemPrefab, randomPos, Quaternion.identity);
+        yield return new WaitForSeconds(1f);
+        StartCoroutine(spawnObjects());
+    }
+
+    public static void UpdateScore(bool isSpecialItem)
+    {
+        if (isSpecialItem)
+            score += specialItemValue;
+        else
+            score += itemValue;
+    }
     #endregion
 }
