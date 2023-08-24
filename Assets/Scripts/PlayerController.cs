@@ -1,9 +1,15 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
+
+using Photon.Pun;
+
 using System.Collections;
 
-
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviourPunCallbacks
 {
+    [Tooltip("The local player instance. Use this to know if the local player is represented in the Scene")]
+    public static GameObject LocalPlayerInstance;
+
     #region Serialized fields
     [SerializeField]
     private float playerSpeed = 1.5f;
@@ -17,6 +23,19 @@ public class PlayerController : MonoBehaviour
 
     #region MonoBehaviour Callbacks
 
+    private void Awake()
+    {
+        // #Important
+        // used in GameManager.cs: we keep track of the localPlayer instance to prevent instantiation when levels are synchronized
+        if (photonView.IsMine)
+        {
+            PlayerController.LocalPlayerInstance = this.gameObject;
+        }
+        // #Critical
+        // we flag as don't destroy on load so that instance survives level synchronization, thus giving a seamless experience when levels load.
+        DontDestroyOnLoad(this.gameObject);
+    }
+
     // Use this for initialization
     void Start()
     {
@@ -28,6 +47,16 @@ public class PlayerController : MonoBehaviour
 
         if (!controller)
             Debug.LogError("PlayerAnimatorManager is Missing CharacterController Component", this);
+
+        CameraWork _cameraWork = this.gameObject.GetComponent<CameraWork>();
+
+        if (_cameraWork != null)
+        {
+            if (photonView.IsMine)
+            {
+                _cameraWork.OnStartFollowing();
+            }
+        }
 
         // setting up manually because of the ghost character controller that keeps reapearing
         controller.radius = 0.1f;
@@ -42,10 +71,28 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        if (photonView.IsMine == false && PhotonNetwork.IsConnected == true)
+            return;
+
+
         if (!animator || !controller)
             return;
 
+        Move();
+        Rotate();
+    }
+
+    #endregion
+
+    private void Rotate()
+    {
+        Vector3 lookAtDirection = gameObject.transform.position + gameObject.transform.forward + gameObject.transform.right * (Input.GetAxis("Horizontal") * rotationVelocity * Time.deltaTime);
+        if (lookAtDirection != Vector3.zero)
+            transform.LookAt(lookAtDirection);
+    }
+
+    private void Move()
+    {
         bool groundedPlayer = controller.isGrounded;
         if (groundedPlayer && playerVelocity.y < 0)
         {
@@ -72,10 +119,5 @@ public class PlayerController : MonoBehaviour
         }
 
         controller.Move((move + playerVelocity) * Time.deltaTime);
-
-        Vector3 lookAtDirection = gameObject.transform.position + gameObject.transform.forward + gameObject.transform.right * (Input.GetAxis("Horizontal") * rotationVelocity * Time.deltaTime);
-        if (lookAtDirection != Vector3.zero)
-            transform.LookAt(lookAtDirection);
     }
-    #endregion
 }
