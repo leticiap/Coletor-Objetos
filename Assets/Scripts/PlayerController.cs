@@ -75,10 +75,7 @@ public class PlayerController : MonoBehaviour
 
         Vector3 lookAtDirection = gameObject.transform.position + gameObject.transform.forward + gameObject.transform.right * (Input.GetAxis("Horizontal") * rotationVelocity * Time.deltaTime);
         if (lookAtDirection != Vector3.zero)
-        {
-            Debug.Log(lookAtDirection);
             transform.LookAt(lookAtDirection);
-        }
     }
     #endregion
 }
