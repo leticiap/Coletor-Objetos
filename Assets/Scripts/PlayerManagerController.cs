@@ -5,7 +5,7 @@ using Photon.Pun;
 
 using System.Collections;
 
-public class PlayerController : MonoBehaviourPunCallbacks
+public class PlayerManagerController : MonoBehaviourPunCallbacks
 {
     [Tooltip("The local player instance. Use this to know if the local player is represented in the Scene")]
     public static GameObject LocalPlayerInstance;
@@ -25,11 +25,12 @@ public class PlayerController : MonoBehaviourPunCallbacks
 
     private void Awake()
     {
+
         // #Important
         // used in GameManager.cs: we keep track of the localPlayer instance to prevent instantiation when levels are synchronized
         if (photonView.IsMine)
         {
-            PlayerController.LocalPlayerInstance = this.gameObject;
+            PlayerManagerController.LocalPlayerInstance = this.gameObject;
         }
         // #Critical
         // we flag as don't destroy on load so that instance survives level synchronization, thus giving a seamless experience when levels load.
@@ -40,13 +41,13 @@ public class PlayerController : MonoBehaviourPunCallbacks
     void Start()
     {
         animator = GetComponent<Animator>();
-        controller = gameObject.AddComponent<CharacterController>();
+        controller = gameObject.GetComponent<CharacterController>();
 
         if (!animator)
-            Debug.LogError("PlayerAnimatorManager is Missing Animator Component", this);
+            Debug.LogError("PlayerController is Missing Animator Component", this);
 
         if (!controller)
-            Debug.LogError("PlayerAnimatorManager is Missing CharacterController Component", this);
+            Debug.LogError("PlayerController is Missing CharacterController Component", this);
 
         CameraWork _cameraWork = this.gameObject.GetComponent<CameraWork>();
 
@@ -54,18 +55,11 @@ public class PlayerController : MonoBehaviourPunCallbacks
         {
             if (photonView.IsMine)
             {
-                _cameraWork.OnStartFollowing();
+                _cameraWork.SetupCameraFollow();
             }
         }
 
-        // setting up manually because of the ghost character controller that keeps reapearing
-        controller.radius = 0.1f;
-        controller.height = 0.2f;
-        controller.center = new Vector3(0, 0.1f, 0);
-        controller.stepOffset = 0.05f;
-        controller.skinWidth = 0.001f;
-        controller.minMoveDistance = 0;
-
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     // Update is called once per frame
@@ -119,5 +113,28 @@ public class PlayerController : MonoBehaviourPunCallbacks
         }
 
         controller.Move((move + playerVelocity) * Time.deltaTime);
+    }
+
+
+    void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode loadingMode)
+    {
+        this.CalledOnLevelWasLoaded(scene.buildIndex);
+    }
+
+    void CalledOnLevelWasLoaded(int level)
+    {
+        // check if we are outside the Arena and if it's the case, spawn around the center of the arena in a safe zone
+        if (!Physics.Raycast(transform.position, -Vector3.up, 5f))
+        {
+            // new random postion if we are outside
+            transform.position = new Vector3(UnityEngine.Random.Range(-1.5f, 1.5f), 1, UnityEngine.Random.Range(-1.5f, 1.5f));
+        }
+    }
+
+    public override void OnDisable()
+    {
+        // Always call the base to remove callbacks
+        base.OnDisable();
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 }

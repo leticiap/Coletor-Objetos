@@ -19,6 +19,8 @@ public class GameManager : MonoBehaviourPunCallbacks
     [Tooltip("The prefab to use for representing the special item.")]
     public GameObject specialItemPrefab;
 
+    public static GameManager Instance;
+
     [SerializeField]
     private const int itemValue = 10;
     [SerializeField]
@@ -26,32 +28,64 @@ public class GameManager : MonoBehaviourPunCallbacks
     [SerializeField]
     private const float specialItemChanceToDrop = 0.2f;
 
-    private static int score = 0;
+    [Tooltip("Time of each game in seconds.")]
+    [SerializeField]
+    private const int time = 30;
+
+    private int score;
+
+    private float timer;
 
     #region Monobehavior Callbacks
+    private void Awake()
+    {
+        // guarantees only one instance of the GameManager
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+    }
+
     private void Start()
     {
-        if (PlayerController.LocalPlayerInstance == null)
+        Cursor.visible = false;
+        Instance = this;
+        score = 0;
+
+        if (playerPrefab == null)
         {
-            Debug.LogFormat("We are Instantiating LocalPlayer from {0}", SceneManagerHelper.ActiveSceneName);
-            // we're in a room. spawn a character for the local player. it gets synced by using PhotonNetwork.Instantiate
-            PhotonNetwork.Instantiate(playerPrefab.name, new Vector3(UnityEngine.Random.Range(-1.5f, 1.5f), 0.4f, UnityEngine.Random.Range(-1.5f, 1.5f)), Quaternion.identity, 0);
+            Debug.LogError("<Color=Red><a>Missing</a></Color> playerPrefab Reference. Please set it up in GameObject 'Game Manager'", this);
         }
         else
         {
-            Debug.LogFormat("Ignoring scene load for {0}", SceneManagerHelper.ActiveSceneName);
+            if (PlayerManagerController.LocalPlayerInstance == null)
+            {
+                Debug.LogFormat("We are Instantiating LocalPlayer from {0}", SceneManagerHelper.ActiveSceneName);
+                // we're in a room. spawn a character for the local player. it gets synced by using PhotonNetwork.Instantiate
+                PhotonNetwork.Instantiate(this.playerPrefab.name, new Vector3(UnityEngine.Random.Range(-1.5f, 1.5f), 1, UnityEngine.Random.Range(-1.5f, 1.5f)), Quaternion.identity, 0);
+            }
+            else
+            {
+                Debug.LogFormat("Ignoring scene load for {0}", SceneManagerHelper.ActiveSceneName);
+            }
         }
+
+
 
         if (itemPrefab == null)
             Debug.LogError("No prefab found to instantiate");
 
-        else
+        // Spawn objects only from master
+        else if (PhotonNetwork.IsMasterClient)
             StartCoroutine(spawnObjects());
+
+        timer = time;
     }
 
     private void Update()
     {
-        Debug.Log(score);
+        ManageTime();
     }
     #endregion
 
@@ -92,8 +126,30 @@ public class GameManager : MonoBehaviourPunCallbacks
     #endregion
 
     #region Private Methods
+    private void ManageTime()
+    {
+        timer -= Time.deltaTime;
+        if (timer <= 0)
+        {
+            ExitGame();
+        }
+    }
 
-    void LoadArena()
+    private void ExitGame()
+    {
+        int bestScore = PlayerPrefs.HasKey("Best Score") ? PlayerPrefs.GetInt("Best Score") : 0;
+        if (bestScore < score)
+        {
+            PlayerPrefs.SetInt("Best Score", score);
+            PlayerPrefs.SetString("Best Player Name", PhotonNetwork.NickName);
+        }
+
+        // Load the initial screen
+        PhotonNetwork.LoadLevel(0);
+        LeaveRoom();
+    }
+
+    private void LoadArena()
     {
         if (!PhotonNetwork.IsMasterClient)
         {
@@ -116,19 +172,29 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     IEnumerator spawnObjects()
     {
-        Vector3 randomPos = new Vector3 (UnityEngine.Random.Range(-1.5f, 1.5f), 3, UnityEngine.Random.Range(-1.5f, 1.5f));
+        Vector3 randomPos = new Vector3 (UnityEngine.Random.Range(-5, 5), 3, UnityEngine.Random.Range(-5, 5));
         float specialItemChance = UnityEngine.Random.Range(0f, 1f);
-        Instantiate(specialItemChance < specialItemChanceToDrop ? specialItemPrefab : itemPrefab, randomPos, Quaternion.identity);
+        PhotonNetwork.Instantiate(specialItemChance < specialItemChanceToDrop ? specialItemPrefab.name : itemPrefab.name, randomPos, Quaternion.identity);
         yield return new WaitForSeconds(1f);
         StartCoroutine(spawnObjects());
     }
 
-    public static void UpdateScore(bool isSpecialItem)
+    public int GetScore()
+    {
+        return score;
+    }
+
+    public void UpdateScore(bool isSpecialItem)
     {
         if (isSpecialItem)
             score += specialItemValue;
         else
             score += itemValue;
+    }
+
+    public int CurrentTime()
+    {
+        return (int) Math.Ceiling(timer);
     }
     #endregion
 }
