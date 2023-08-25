@@ -29,7 +29,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     private const float specialItemChanceToDrop = 0.2f;
     [Tooltip("Time in seconds between each spawn.")]
     [SerializeField]
-    private const float itemSpawnTime = 2.5f;
+    private const float itemSpawnTime = 1.5f;
 
     [Tooltip("Time of each game in seconds.")]
     [SerializeField]
