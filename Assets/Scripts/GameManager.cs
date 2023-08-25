@@ -27,10 +27,13 @@ public class GameManager : MonoBehaviourPunCallbacks
     private const int specialItemValue = 30;
     [SerializeField]
     private const float specialItemChanceToDrop = 0.2f;
+    [Tooltip("Time in seconds between each spawn.")]
+    [SerializeField]
+    private const float itemSpawnTime = 2.5f;
 
     [Tooltip("Time of each game in seconds.")]
     [SerializeField]
-    private const int time = 30;
+    private const int time = 50;
 
     private int score;
 
@@ -144,9 +147,8 @@ public class GameManager : MonoBehaviourPunCallbacks
             PlayerPrefs.SetString("Best Player Name", PhotonNetwork.NickName);
         }
 
-        // Load the initial screen
-        PhotonNetwork.LoadLevel(0);
-        LeaveRoom();
+        if (PhotonNetwork.IsMasterClient)
+            LeaveRoom();
     }
 
     private void LoadArena()
@@ -175,7 +177,8 @@ public class GameManager : MonoBehaviourPunCallbacks
         Vector3 randomPos = new Vector3 (UnityEngine.Random.Range(-5, 5), 3, UnityEngine.Random.Range(-5, 5));
         float specialItemChance = UnityEngine.Random.Range(0f, 1f);
         PhotonNetwork.Instantiate(specialItemChance < specialItemChanceToDrop ? specialItemPrefab.name : itemPrefab.name, randomPos, Quaternion.identity);
-        yield return new WaitForSeconds(1f);
+        
+        yield return new WaitForSeconds(itemSpawnTime);
         StartCoroutine(spawnObjects());
     }
 

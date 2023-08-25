@@ -30,11 +30,11 @@ public class PlayerManagerController : MonoBehaviourPunCallbacks
         // used in GameManager.cs: we keep track of the localPlayer instance to prevent instantiation when levels are synchronized
         if (photonView.IsMine)
         {
-            PlayerManagerController.LocalPlayerInstance = this.gameObject;
+            PlayerManagerController.LocalPlayerInstance = gameObject;
         }
         // #Critical
         // we flag as don't destroy on load so that instance survives level synchronization, thus giving a seamless experience when levels load.
-        DontDestroyOnLoad(this.gameObject);
+        DontDestroyOnLoad(gameObject);
     }
 
     // Use this for initialization
@@ -49,13 +49,13 @@ public class PlayerManagerController : MonoBehaviourPunCallbacks
         if (!controller)
             Debug.LogError("PlayerController is Missing CharacterController Component", this);
 
-        CameraWork _cameraWork = this.gameObject.GetComponent<CameraWork>();
+        CameraWork cameraWork = gameObject.GetComponent<CameraWork>();
 
-        if (_cameraWork != null)
+        if (cameraWork != null)
         {
             if (photonView.IsMine)
             {
-                _cameraWork.SetupCameraFollow();
+                cameraWork.OnStartFollowing();
             }
         }
 
@@ -115,10 +115,9 @@ public class PlayerManagerController : MonoBehaviourPunCallbacks
         controller.Move((move + playerVelocity) * Time.deltaTime);
     }
 
-
     void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode loadingMode)
     {
-        this.CalledOnLevelWasLoaded(scene.buildIndex);
+        CalledOnLevelWasLoaded(scene.buildIndex);
     }
 
     void CalledOnLevelWasLoaded(int level)
@@ -128,7 +127,7 @@ public class PlayerManagerController : MonoBehaviourPunCallbacks
         {
             // new random postion if we are outside
             transform.position = new Vector3(UnityEngine.Random.Range(-1.5f, 1.5f), 1, UnityEngine.Random.Range(-1.5f, 1.5f));
-        }
+        }        
     }
 
     public override void OnDisable()
