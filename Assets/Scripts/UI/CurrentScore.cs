@@ -1,13 +1,13 @@
-using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class CurrentScore : MonoBehaviour
 {
-    private TMP_Text text;
+    private Text text;
 
     private void Start()
     {
-        text = GetComponent<TMP_Text>();
+        text = GetComponent<Text>();
     }
     // Update is called once per frame
     void Update()
